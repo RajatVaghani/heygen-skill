@@ -44,14 +44,14 @@ Create `/data/.openclaw/shared-files/heygen/config.json`:
 ```json
 {
   "api_key": "sk_V2_your_api_key_here",
-  "default_avatar_id": "092ff921ba824fe99483715273ea9d27",
+  "default_avatar_id": "YOUR_AVATAR_ID",
   "default_orientation": "portrait",
   "default_duration_sec": 45,
   "assets": [
-    { "id": "6ec6afe91193478d810a4f1df524b46a", "label": "App Screenshot", "type": "image" }
+    { "id": "YOUR_ASSET_ID", "label": "My Brand Image", "type": "image" }
   ],
   "avatars": [
-    { "id": "092ff921ba824fe99483715273ea9d27", "label": "Sarah - Casual" }
+    { "id": "YOUR_AVATAR_ID", "label": "Preferred Avatar" }
   ]
 }
 ```
@@ -147,7 +147,7 @@ node scripts/heygen-generate-video.mjs "Create a 30-second explainer about our p
 
 # Full options — TikTok style with avatar and assets
 node scripts/heygen-generate-video.mjs "Hook, problem, solution, CTA about VPN security" \
-  --avatar 092ff921ba824fe99483715273ea9d27 \
+  --avatar YOUR_AVATAR_ID \
   --orientation portrait \
   --duration 45 \
   --use-config-assets

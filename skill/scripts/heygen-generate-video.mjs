@@ -26,7 +26,7 @@
  *
  *   # TikTok-style vertical with specific avatar and config assets
  *   node heygen-generate-video.mjs "Hook, problem, solution, CTA" \
- *     --avatar 092ff921ba824fe99483715273ea9d27 \
+ *     --avatar YOUR_AVATAR_ID \
  *     --orientation portrait --duration 45 --use-config-assets
  *
  *   # Prompt from file

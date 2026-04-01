@@ -23,12 +23,12 @@ One-shot video generation from a text prompt.
 {
   "prompt": "Create a 45-second TikTok about VPN security...",
   "config": {
-    "avatar_id": "092ff921ba824fe99483715273ea9d27",
+    "avatar_id": "YOUR_AVATAR_ID",
     "orientation": "portrait",
     "duration_sec": 45
   },
   "files": [
-    { "asset_id": "6ec6afe91193478d810a4f1df524b46a" }
+    { "asset_id": "YOUR_ASSET_ID" }
   ],
   "callback_url": "https://example.com/webhook",
   "callback_id": "my-tracking-id"
