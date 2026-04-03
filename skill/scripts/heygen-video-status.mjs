@@ -3,11 +3,12 @@
  * Check video generation status and get download URLs.
  *
  * Usage:
- *   node heygen-video-status.mjs <videoId> [--poll] [--interval <seconds>] [--config <path>]
+ *   node heygen-video-status.mjs <videoId> [--poll] [--interval <seconds>] [--max-attempts <n>] [--config <path>]
  *
  * Options:
  *   --poll               Keep polling until video completes or fails
  *   --interval <seconds> Seconds between polls (default: 30)
+ *   --max-attempts <n>   Maximum number of poll attempts before exiting (default: 40, ~20 min at 30s)
  *   --config <path>      Custom config path
  *
  * Video statuses:
@@ -38,9 +39,10 @@ async function main() {
   const config = loadConfig();
   const shouldPoll = getFlag('poll');
   const interval = parseInt(getArg('interval') || '30', 10) * 1000;
+  const maxAttempts = parseInt(getArg('max-attempts') || '40', 10);
 
   if (shouldPoll) {
-    await pollUntilDone(config.api_key, videoId, interval);
+    await pollUntilDone(config.api_key, videoId, interval, maxAttempts);
   } else {
     const status = await checkStatus(config.api_key, videoId);
     outputJson(status);
@@ -77,10 +79,12 @@ async function checkStatus(apiKey, videoId) {
   return output;
 }
 
-async function pollUntilDone(apiKey, videoId, interval) {
-  process.stderr.write(`Polling video ${videoId} every ${interval / 1000}s...\n`);
+async function pollUntilDone(apiKey, videoId, interval, maxAttempts) {
+  process.stderr.write(`Polling video ${videoId} every ${interval / 1000}s (max ${maxAttempts} attempts)...\n`);
 
-  while (true) {
+  let attempts = 0;
+  while (attempts < maxAttempts) {
+    attempts++;
     const status = await checkStatus(apiKey, videoId);
 
     if (status.status === 'completed') {
@@ -95,9 +99,21 @@ async function pollUntilDone(apiKey, videoId, interval) {
       process.exit(1);
     }
 
-    process.stderr.write(`  Status: ${status.status} — waiting ${interval / 1000}s...\n`);
+    process.stderr.write(`  [${attempts}/${maxAttempts}] Status: ${status.status} — waiting ${interval / 1000}s...\n`);
     await new Promise(r => setTimeout(r, interval));
   }
+
+  // Max attempts reached — exit with timeout status (NOT an error — video may still complete)
+  process.stderr.write(`Polling timed out after ${maxAttempts} attempts (~${Math.round(maxAttempts * interval / 60000)} min). Video may still be processing.\n`);
+  outputJson({
+    ok: false,
+    video_id: videoId,
+    status: 'poll_timeout',
+    attempts: maxAttempts,
+    message: `Polling stopped after ${maxAttempts} attempts. The video is likely still processing on HeyGen servers. Check again later with: node heygen-video-status.mjs ${videoId}`,
+    action: 'DO NOT generate a new video. Wait and re-check this video ID later.',
+  });
+  process.exit(2);
 }
 
 main().catch(err => exitError(err.message));

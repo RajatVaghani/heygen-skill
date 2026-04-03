@@ -124,6 +124,24 @@ All scripts live in this skill's `scripts/` directory. They output JSON to stdou
 
 ---
 
+## Critical Rules for Automated / Cron Execution
+
+**These rules are NON-NEGOTIABLE when this skill runs as part of an automated pipeline or cron job:**
+
+1. **ONE VIDEO PER RUN.** Each execution generates exactly ONE video. Never generate a second video as a "test," "fallback," or "retry" — even if the first video appears stuck. Every generation costs real credits.
+
+2. **If polling times out, STOP. Do NOT generate another video.** The video is almost certainly still processing on HeyGen's servers. Log the video ID and exit. A human or the next scheduled run can check the status later.
+
+3. **Never "test the API" by generating a video.** If you need to verify API connectivity, use `heygen-setup-check.mjs` or `heygen-list-avatars.mjs` — these are read-only and cost nothing.
+
+4. **Pending ≠ failed.** A video in `pending` or `processing` status for 10-15 minutes is normal during peak hours. Only treat `failed` status as an actual failure.
+
+5. **On timeout or errors:** Log the video ID, status, and error details to the designated error log. Do NOT attempt to recover by re-generating. Exit cleanly so the issue can be reviewed.
+
+6. **Use `--poll --max-attempts 40`** (default ~20 minutes) when polling. If it times out, the script exits with a clear `poll_timeout` status. Respect that exit — do not work around it.
+
+---
+
 ## Video Generation Workflow
 
 This is the core workflow. Follow these steps every time:
@@ -164,12 +182,14 @@ This returns a `video_id`. Save it.
 # One-time check
 node scripts/heygen-video-status.mjs <videoId>
 
-# Auto-poll until complete (checks every 30 seconds)
+# Auto-poll until complete (checks every 30 seconds, max 40 attempts ~20 min)
 node scripts/heygen-video-status.mjs <videoId> --poll
 
-# Custom interval
-node scripts/heygen-video-status.mjs <videoId> --poll --interval 15
+# Custom interval and max attempts
+node scripts/heygen-video-status.mjs <videoId> --poll --interval 15 --max-attempts 60
 ```
+
+**If polling times out** (exit code 2), the video is likely still processing. The script outputs `status: "poll_timeout"` with the video ID. **Do NOT generate a new video.** Log the ID and check it later.
 
 ### 4. Deliver the Video
 
@@ -279,13 +299,14 @@ This prevents the AI from hallucinating brand visuals.
 
 | Status | Meaning | Action |
 |--------|---------|--------|
-| `pending` | In queue | Wait |
+| `pending` | In queue | Wait — this can take 10-15 min during peak hours. Do NOT treat as an error. |
 | `waiting` | In queue | Wait |
 | `processing` | Actively rendering | Wait — usually 1-5 minutes |
 | `completed` | Done | Deliver video_url to user |
 | `failed` | Error occurred | Check error details, fix prompt, retry |
+| `poll_timeout` | Script stopped polling | Video is likely still processing. Log video ID. Do NOT generate a new video. |
 
-Typical rendering time: **1-5 minutes** for a 30-60 second video.
+Typical rendering time: **1-5 minutes** for a 30-60 second video, but can be **10-20 minutes** during peak hours. This is normal.
 
 ---
 
@@ -320,6 +341,8 @@ HeyGen charges per video based on duration:
 | Video `failed` status | Check the error details in the response. Common issues: video too long for plan, invalid avatar. |
 | Asset upload fails | Check file format (png/jpg/mp4/webm/mp3). Upload goes to upload.heygen.com, not api.heygen.com. |
 | Video has wrong visuals | Improve the prompt. Be more explicit about when to show assets. Add the "do not fabricate logos" rule. |
+| Video stuck in `pending` for 10+ min | This is normal during peak hours. Do NOT generate another video. Use `heygen-setup-check.mjs` to verify API access (free). Wait and re-check the original video ID later. |
+| Polling script timed out (exit code 2) | The video is still processing. Log the video ID. Check again later with `heygen-video-status.mjs <id>`. NEVER generate a replacement video. |
 
 ---
 
